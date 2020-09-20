@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/d6_3.ico') }}">
+    <title>Statistics For Dice</title>
+    <meta charset="utf-8"/>
+    <meta name="image" property="og:image" content="{{ url_for('static', filename='images/tons_o_dice.jpg') }}"/>
+    <meta name="author" content="Eric Shaw">
+
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <script type=text/javascript>
+        $SCRIPT_ROOT = {{request.script_root|tojson|safe}};
+    </script>
+
+    <script src="{{ url_for('static', filename='BigInteger.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='roller.js') }}"></script>
+    <script src="{{ url_for('static', filename='testData.js') }}"></script>
+    <script src="{{ url_for('static', filename='scinum.js') }}"></script>
+    <script src="{{ url_for('static', filename='statsmaker.js') }}"></script>
+    <script src="{{ url_for('static', filename='interface.js') }}"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+</head>
+<body>
+<div id="intro">
+    <div id="title-area">
+        <div id="title-text-box">
+            <h1 class="big-line">Dice Statistics Calculator</h1>
+            <p>
+                {{ intro_text }}
+            </p>
+        </div>
+        <div id="title-image-box">
+            <img src="{{ url_for('static', filename='images/lotta_dice.jpg') }}" alt="dice group" id="dice-bag">
+        </div>
+    </div>
+    <ul id="starter">
+        <li>
+            <a href="https://dice-tables.readthedocs.io/en/latest/intro.html"
+               rel="noopener noreferrer" target="_blank">
+                Mathematical!
+            </a>
+        </li>
+        <li>
+            <div class="dropdown">
+                <button class="dropbtn">Click On The Examples &#x25BC;</button>
+                <div class="dropdown-content">
+                    <button class="exampleClickable">
+                        <b>Die(6)</b>: a six-sided die
+                    </button>
+                    <button class="exampleClickable">
+                        <b>2*Die(4)&3*Die(8)</b>: 2 four-sided dice and 3 eight-sided dice
+                    </button>
+                    <button class="exampleClickable">
+                        <b>3*ModDie(6, 2)</b>: 3(D6+2) - three * (six-sided die + 2)
+                    </button>
+                    <button class="exampleClickable">
+                        <b>5*WeightedDie({1:1, 2: 2})</b>: 5 * (2-sided die that rolls 2 twice as often as 1)
+                    </button>
+                    <button class="exampleClickable">
+                        <b>5*ModWeightedDie({1:1, 2: 2}, 5)</b>: 5(D2+5) = 5*(2-sided die that rolls 7 (2+5) twice as
+                        often as 6 (1+5)
+                    </button>
+                    <button class="exampleClickable">
+                        <b>2*StrongDie(Die(6), 3)</b>: 2 dice that roll D6X3. each die rolls 3, 6, 9, ... 18.
+                    </button>
+                    <button class="exampleClickable">
+                        <b>2*Die(6)&Modifier(-3)</b>: modifier adds to the overall dice. = 2D6+3 (2 six-sided dice + 3)
+                    </button>
+                    <button class="exampleClickable">
+                        <b>Exploding(Die(6))</b>: An exploding D6 is a six-sided die that you get to keep rolling every
+                        time you roll a six
+                    </button>
+                    <button class="exampleClickable">
+                        <b>ExplodingOn(Die(6), (1, ))</b>: As above, except you get to keep rolling every time you roll
+                        1
+                    </button>
+                    <button class="exampleClickable">
+                        <b>ExplodingOn(Die(6), (1, 6))</b>: As above, except you get to keep rolling every time you roll
+                        1 or 6
+                    </button>
+                    <button class="exampleClickable">
+                        <b>BestOfDicePool(Die(6), 3, 2)</b>: take the 2 best rolls of 3D6
+                    </button>
+                    <button class="exampleClickable">
+                        <b>WorstOfDicePool(Die(6), 4, 2)</b>: take the 2 worst rolls of 4D6
+                    </button>
+                    <button class="exampleClickable">
+                        <b>UpperMidOfDicePool(Die(6), 7, 4)</b>: take the middle four rolls of 7D6
+                    </button>
+                    <button class="exampleClickable">
+                        <b>LowerMidOfDicePool(Die(6), 7, 4)</b>: take the middle four rolls of 7D6
+                    </button>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="dropdown">
+                <button class="dropbtn">Quickstart</button>
+                <div class="dropdown-content to-the-right">
+                    <div>
+                        {% for paragraph in instruction_text.split('\n\n') %}
+                            <p>{{ paragraph }}</p>
+                        {% endfor %}
+                    </div>
+                    <a href="https://dice-tables.readthedocs.io/en/latest/the_dice.html#some-example-dice"
+                       rel="noopener noreferrer" target="_blank">
+                        I don't want to click on the "click on the examples" but I still want examples.
+                    </a>
+                    <a href="https://dice-tables.readthedocs.io/en/latest/the_dice.html#module-dicetables.dieevents"
+                       rel="noopener noreferrer" target="_blank">
+                        I love implementation details for dice!
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="dropdown">
+                <button class="dropbtn">Report a Bug</button>
+                <div class="dropdown-content to-the-right">
+                    <p>Filing issues requires a github account.</p>
+                    <div>
+                        <a href="https://github.com/eric-s-s/dicetables_flask/issues"
+                           rel="noopener noreferrer" target="_blank">
+                            Have issues or suggestions for front-end? Start a new issue here.
+                        </a>
+                    </div>
+                    <div>
+                        <a href="https://github.com/eric-s-s/dice-tables/issues"
+                           rel="noopener noreferrer" target="_blank">
+                            Found a math problem or want to see a feature? Back-end issues here.
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </li>
+    </ul>
+</div>
+<section id="plots">
+    <div id="tableRequestArea">
+        <button id="more">more dice collections</button>
+
+
+        <form class="tableRequest" id="table-0">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+        <form class="tableRequest" id="table-1">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+        <form class="tableRequest" id="table-2">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+        <form class="tableRequest" id="table-3">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+        <form class="tableRequest" id="table-4">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+        <form class="tableRequest" id="table-5">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+        <form class="tableRequest" id="table-6">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+        <form class="tableRequest" id="table-7">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+        <form class="tableRequest" id="table-8">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+        <form class="tableRequest" id="table-9">
+            <button type="button" class="rmTable">rm dice collection</button>
+            <button type="button" class="roller">roll</button>
+            <div class="tooltip rollDisplay">None
+                <span class='tooltiptext'>previous</span>
+            </div>
+            <input type="text" name="tableQuery" title="get table"
+                   placeholder="example: 2*Die(6)&3*WeightedDie({1:1, 2:3})">
+            <button type="submit">submit</button>
+        </form>
+
+    </div>
+</section>
+<section class="plotSection">
+
+    <div id="plotter"></div>
+    <!--style="width:600px;height:250px;"-->
+
+</section>
+<section id="stats" class="toLeft">
+    <div id="basic"></div>
+
+    <div id="statsRequestArea">
+        <button id="moreStats">more stats</button>
+
+
+        <form id="stats-0" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+
+        <form id="stats-1" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+
+        <form id="stats-2" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+
+        <form id="stats-3" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+
+        <form id="stats-4" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+
+        <form id="stats-5" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+
+        <form id="stats-6" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+
+        <form id="stats-7" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+
+        <form id="stats-8" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+
+        <form id="stats-9" class="statsRequest">
+            <button class="rmStats" type="button">rm</button>
+            <label>
+                <input class='statsInput' title='stats range' name='left' type="number">
+            </label>
+            <label>
+                <input class='statsInput' title='stats range' name='right' type="number">
+            </label>
+            <button type="submit">submit</button>
+        </form>
+    </div>
+
+</section>
+<section id="answer" class="toLeft">
+    <div id="tableContainer">
+        <table id="statsTable">
+            <tr id="tableName" class="keeper">
+                <th>Table Name</th>
+            </tr>
+            <tr id="tableRange" class="keeper">
+                <th>Table Range</th>
+            </tr>
+            <tr id="tableMean" class="keeper">
+                <th>Mean</th>
+            </tr>
+            <tr id="tableStdDev" class="keeper">
+                <th>Std Dev</th>
+            </tr>
+            <tr id="rowFor-stats-0"></tr>
+            <tr id="rowFor-stats-1"></tr>
+            <tr id="rowFor-stats-2"></tr>
+            <tr id="rowFor-stats-3"></tr>
+            <tr id="rowFor-stats-4"></tr>
+            <tr id="rowFor-stats-5"></tr>
+            <tr id="rowFor-stats-6"></tr>
+            <tr id="rowFor-stats-7"></tr>
+            <tr id="rowFor-stats-8"></tr>
+            <tr id="rowFor-stats-9"></tr>
+        </table>
+    </div>
+</section>
+</body>
+</html>

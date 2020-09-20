@@ -1,0 +1,15 @@
+This website is for calculating the statistics of dice rolls.
+
+In a "dice collections" submission box, type in <number>*<die> and then
+type <enter> or hit the "submit" button. You will get a graph of the
+possible die rolls and the percent chance for each roll. See the "helpful examples"
+menu for .... helpful examples.
+
+You can graph multiple sets of dice. For example,
+you could graph 2*Die(6) in one dice collections, then hit the "more dice collections"
+button and graph 1*Die(6)&1*Die(8) in another collection. Then you could try
+BestOfDicePool(Die(6), 4, 2) to take the two best die rolls from 4D6.
+
+You can compare collections in the "stats" area. To see how often these collections roll 2-10,
+put those numbers in the stats area and hit "submit". Then add another stats by
+pushing the "more stats" button and ...
