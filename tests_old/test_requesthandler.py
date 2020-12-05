@@ -1,114 +1,124 @@
+import re
 import string
-import unittest
 
+import pytest
 from dicetables import (DiceTable, DetailedDiceTable, DiceRecord,
                         ParseError, LimitsError, InvalidEventsError, DiceRecordError,
                         Die, ModDie, WeightedDie, ModWeightedDie, StrongDie, Exploding, ExplodingOn, Modifier,
-                        BestOfDicePool, WorstOfDicePool, LowerMidOfDicePool, UpperMidOfDicePool)
+                        BestOfDicePool, WorstOfDicePool, LowerMidOfDicePool, UpperMidOfDicePool, DicePool)
 
-from flaskapp.dice_tables_tequest_handler import DiceTablesRequestHandler, make_dict
+from request_handler.dice_tables_tequest_handler import DiceTablesRequestHandler, make_dict
 
 
-class TestRequestHandler(unittest.TestCase):
-    def setUp(self):
-        self.handler = DiceTablesRequestHandler()
+@pytest.fixture
+def handler():
+    return DiceTablesRequestHandler()
 
-    def test_init_default_max_score(self):
-        self.assertEqual(self.handler.max_dice_value, 12000)
 
-    def test_init_set_max_dice_value(self):
+class TestRequestHandler(object):
+
+    def test_init_default_max_score(self, handler):
+        assert handler.max_dice_value == 12000
+
+    def test_init_set_max_dice_value(self, handler):
         handler = DiceTablesRequestHandler(2)
-        self.assertEqual(handler.max_dice_value, 2)
+        assert handler.max_dice_value == 2
 
-    def test_get_table(self):
-        self.assertEqual(self.handler.get_table(), DiceTable.new())
+    def test_get_table(self, handler):
+        assert handler.get_table() == DiceTable.new()
         expected = DiceTable.new().add_die(Die(6), 2)
-        self.handler.request_dice_table_construction('2*Die(6)')
-        self.assertEqual(self.handler.get_table(), expected)
+        handler.request_dice_table_construction('2*Die(6)')
+        assert handler.get_table() == expected
 
-    def test_request_dice_table_empty_string(self):
-        self.handler.request_dice_table_construction('')
-        self.assertEqual(self.handler.get_table(), DiceTable.new())
+    def test_request_dice_table_empty_string(self, handler):
+        handler.request_dice_table_construction('')
+        assert handler.get_table() == DiceTable.new()
 
-    def test_request_dice_table_only_whitespace(self):
-        self.handler.request_dice_table_construction('   ')
-        self.assertEqual(self.handler.get_table(), DiceTable.new())
+    def test_request_dice_table_only_whitespace(self, handler):
+        handler.request_dice_table_construction('   ')
+        assert handler.get_table() == DiceTable.new()
 
-    def test_request_dice_table_single_die_no_number(self):
-        self.handler.request_dice_table_construction('Die(3)')
-        self.assertEqual(self.handler.get_table(), DiceTable.new().add_die(Die(3), 1))
+    def test_request_dice_table_single_die_no_number(self, handler):
+        handler.request_dice_table_construction('Die(3)')
+        assert handler.get_table() == DiceTable.new().add_die(Die(3), 1)
 
-    def test_request_dice_table_single_die_with_number(self):
-        self.handler.request_dice_table_construction('2*Die(3)')
-        self.assertEqual(self.handler.get_table(), DiceTable.new().add_die(Die(3), 2))
+    def test_request_dice_table_single_die_with_number(self, handler):
+        handler.request_dice_table_construction('2*Die(3)')
+        assert handler.get_table() == DiceTable.new().add_die(Die(3), 2)
 
-    def test_request_dice_table_multiple_dice_without_number(self):
-        self.handler.request_dice_table_construction('Die(3)&Die(2)')
-        self.assertEqual(self.handler.get_table(), DiceTable.new().add_die(Die(2)).add_die(Die(3)))
+    def test_request_dice_table_multiple_dice_without_number(self, handler):
+        handler.request_dice_table_construction('Die(3)&Die(2)')
+        assert handler.get_table() == DiceTable.new().add_die(Die(2)).add_die(Die(3))
 
-    def test_request_dice_table_multiple_dice_with_number(self):
-        self.handler.request_dice_table_construction('2*Die(3) & 2*Die(2)')
-        self.assertEqual(self.handler.get_table(), DiceTable.new().add_die(Die(2), 2).add_die(Die(3), 2))
+    def test_request_dice_table_multiple_dice_with_number(self, handler):
+        handler.request_dice_table_construction('2*Die(3) & 2*Die(2)')
+        assert handler.get_table() == DiceTable.new().add_die(Die(2), 2).add_die(Die(3), 2)
 
-    def test_request_dice_table_construction_request_exceeds_max_dice_value(self):
+    def test_request_dice_table_construction_request_exceeds_max_dice_value(self, handler):
         handler = DiceTablesRequestHandler(max_dice_value=12)
         handler.request_dice_table_construction('2*Die(6)')
         handler.request_dice_table_construction('6*WeightedDie({1: 2, 2: 10})')
-        with self.assertRaises(ValueError) as cm:
-            handler.request_dice_table_construction('1*Die(6)&1*Die(7)')
-        self.assertEqual(cm.exception.args[0], 'The sum of all max(die_size, len(die_dict))*die_number must be <= 12')
+        msg = 'The sum of all max(die_size, len(die_dict))*die_number must be <= 12'
+        with pytest.raises(ValueError, match=re.escape(msg)):
+            instructions = '1*Die(6)&1*Die(7)'
+            handler.request_dice_table_construction(instructions)
 
     def test_request_dice_table_construction_exceed_max_dice_value_based_on_max_of_dict_len_and_die_size(self):
         handler = DiceTablesRequestHandler(max_dice_value=12)
 
-        self.assertEqual(len(Exploding(Die(4)).get_dict()), 10)
+        assert len(Exploding(Die(4)).get_dict()) ==  10
         handler.request_dice_table_construction('Exploding(Die(4))')
-        self.assertEqual(len(Exploding(Die(5)).get_dict()), 13)
-        self.assertEqual(Exploding(Die(5)).get_size(), 5)
-        self.assertRaises(ValueError, handler.request_dice_table_construction, 'Exploding(Die(5))')
+        assert len(Exploding(Die(5)).get_dict()) ==  13
+        assert Exploding(Die(5)).get_size() ==  5
+        exploding_instructions = 'Exploding(Die(5))'
+        with pytest.raises(ValueError):
+            handler.request_dice_table_construction(exploding_instructions)
 
-        self.assertEqual(WeightedDie({1: 1, 12: 1}).get_size(), 12)
+        assert WeightedDie({1: 1,  12: 1}).get_size() == 12
         handler.request_dice_table_construction('WeightedDie({1: 1, 12: 1})')
-        self.assertEqual(len(WeightedDie({1: 1, 13: 1}).get_dict()), 2)
-        self.assertEqual(WeightedDie({1: 1, 13: 1}).get_size(), 13)
-        self.assertRaises(ValueError, handler.request_dice_table_construction, 'WeightedDie({1: 1, 13: 1})')
+        assert len(WeightedDie({1: 1, 13: 1}).get_dict()) == 2
+        assert WeightedDie({1: 1,  13: 1}).get_size() == 13
+        instructions = 'WeightedDie({1: 1, 13: 1})'
+        with pytest.raises(ValueError):
+            handler.request_dice_table_construction(instructions)
 
-    def test_request_dice_table_construction_leading_and_trailing_whitespace(self):
-        self.handler.request_dice_table_construction('   2  *  Die( 5 )   &   1  *  Die( 4 )   ')
-        self.assertEqual(self.handler.get_table(), DiceTable.new().add_die(Die(5), 2).add_die(Die(4)))
+    def test_request_dice_table_construction_leading_and_trailing_whitespace(self, handler):
+        handler.request_dice_table_construction('   2  *  Die( 5 )   &   1  *  Die( 4 )   ')
+        assert handler.get_table() ==  DiceTable.new().add_die(Die(5), 2).add_die(Die(4))
 
-    def test_request_dice_table_construction_all_dice(self):
+    def test_request_dice_table_construction_all_dice(self, handler):
+        pool = DicePool(Die(2), 2)
         all_dice = [Die(die_size=2), ModDie(2, modifier=-1), WeightedDie(dictionary_input={3: 4, 5: 6, 7: 8, 9: 0}),
                     ModWeightedDie({1: 2, 3: 4}, 0), StrongDie(input_die=Die(2), multiplier=2),
                     Exploding(Die(2), explosions=1), ExplodingOn(Die(3), explodes_on=(1, 2)), Modifier(modifier=-100),
-                    BestOfDicePool(Die(2), 2, 1), WorstOfDicePool(Die(2), 2, 1), UpperMidOfDicePool(Die(2), 2, 1),
-                    LowerMidOfDicePool(Die(2), 2, 1)]
+                    BestOfDicePool(pool, 1), WorstOfDicePool(pool, 1), UpperMidOfDicePool(pool, 1),
+                    LowerMidOfDicePool(pool, 1)]
 
         for die in all_dice:
-            self.handler.request_dice_table_construction('2 * {!r}'.format(die))
-            self.assertEqual(self.handler.get_table(), DiceTable.new().add_die(die, 2))
+            handler.request_dice_table_construction('2 * {!r}'.format(die))
+            assert handler.get_table() ==  DiceTable.new().add_die(die, 2)
 
-    def test_request_dice_table_construction_with_kwargs(self):
-        self.handler.request_dice_table_construction('ModDie(die_size=2, modifier=3)')
-        self.assertEqual(self.handler.get_table(), DiceTable.new().add_die(ModDie(2, 3)))
+    def test_request_dice_table_construction_with_kwargs(self, handler):
+        handler.request_dice_table_construction('ModDie(die_size=2, modifier=3)')
+        assert handler.get_table() ==  DiceTable.new().add_die(ModDie(2, 3))
 
-    def test_request_dice_table_construction_mixed_case(self):
+    def test_request_dice_table_construction_mixed_case(self, handler):
         request = 'dIe(DiE_sIzE=3)'
-        self.handler.request_dice_table_construction(request)
-        self.assertEqual(self.handler.get_table(), DiceTable.new().add_die(Die(3)))
+        handler.request_dice_table_construction(request)
+        assert handler.get_table() ==  DiceTable.new().add_die(Die(3))
 
-    def test_disallowed_delimiters_raise_value_error(self):
+    def test_disallowed_delimiters_raise_value_error(self, handler):
         expected_allowed = "!\"#$%&'*+./;<>?@\\^`|~\t\n\r"
         answer = ""
         for char in string.printable:
             try:
-                self.handler.request_dice_table_construction('Die(6)', num_delimiter=char)
+                handler.request_dice_table_construction('Die(6)', num_delimiter=char)
                 answer += char
             except ValueError as e:
-                self.assertTrue(e.args[0].startswith('Delimiters may not be'))
-        self.assertEqual(expected_allowed, answer)
+                assert e.args[0].startswith('Delimiters may not be')
+        assert expected_allowed == answer
 
-    def test_request_dice_table_construction_with_all_allowed_delimiters(self):
+    def test_request_dice_table_construction_with_all_allowed_delimiters(self, handler):
         allowed = "!\"#$%&'*+./;<>?@\\^`|~\t\n\r"
 
         for index, num_delimiter in enumerate(allowed):
@@ -116,39 +126,28 @@ class TestRequestHandler(unittest.TestCase):
             request_str = f'2{num_delimiter}Die(2){pairs_delimiter}Die(3)'
             expected = DiceTable.new().add_die(Die(2), 2).add_die(Die(3))
 
-            self.handler.request_dice_table_construction(request_str,
+            handler.request_dice_table_construction(request_str,
                                                          num_delimiter=num_delimiter, pairs_delimiter=pairs_delimiter)
-            self.assertEqual(self.handler.get_table(), expected)
+            assert handler.get_table() ==  expected
 
-    def test_request_dice_table_construction_each_error_raised(self):
-        instructions = '2*Die(5) & *Die(4)'
-        self.assertRaises(ValueError, self.handler.request_dice_table_construction, instructions)
+    @pytest.mark.parametrize("instructions, error", [
+        ('2*Die(5) & *Die(4)', ValueError),
+        ('3 die(3)', SyntaxError),
+        ('3 * die("a")', ValueError),
+        ('3 * moddie(2)', TypeError),
+        ('didfde(3)', ParseError),
+        ('die(1, 2, 3)', IndexError),
+        ('die(30000)', LimitsError),
+        ('die(-1)', InvalidEventsError),
+        ('-2*die(2)', DiceRecordError),
+    ])
+    def test_request_dice_table_construction_each_error_raised(self, handler, instructions, error):
+        if instructions == 'die(1, 2, 3)':
+            print("HIIII",handler.get_response(instructions))
+        with pytest.raises(error):
+            handler.request_dice_table_construction(instructions)
 
-        instructions = '3 die(3)'
-        self.assertRaises(SyntaxError, self.handler.request_dice_table_construction, instructions)
-
-        instructions = '3 * die("a")'
-        self.assertRaises(AttributeError, self.handler.request_dice_table_construction, instructions)
-
-        instructions = '3 * moddie(2)'
-        self.assertRaises(TypeError, self.handler.request_dice_table_construction, instructions)
-
-        instructions = 'didfde(3)'
-        self.assertRaises(ParseError, self.handler.request_dice_table_construction, instructions)
-
-        instructions = 'die(1, 2, 3)'
-        self.assertRaises(IndexError, self.handler.request_dice_table_construction, instructions)
-
-        instructions = 'die(30000)'
-        self.assertRaises(LimitsError, self.handler.request_dice_table_construction, instructions)
-
-        instructions = 'die(-1)'
-        self.assertRaises(InvalidEventsError, self.handler.request_dice_table_construction, instructions)
-
-        instructions = '-2*die(2)'
-        self.assertRaises(DiceRecordError, self.handler.request_dice_table_construction, instructions)
-
-    def test_request_dice_table_construction_all_errors_are_caught(self):
+    def test_request_dice_table_construction_all_errors_are_caught(self, handler):
         errors = (ValueError, SyntaxError, AttributeError, IndexError, TypeError,
                   ParseError, LimitsError, InvalidEventsError, DiceRecordError)
         instructions = ['* Die(4)', '3 die(3)', '3 & die(3)', 'Die(4) * 3 * Die(5)', '4 $ die(5)',
@@ -156,9 +155,10 @@ class TestRequestHandler(unittest.TestCase):
                         'die(1, 2, 3)', 'WeightedDie({1, 2})', 'WeightedDie({-1: 1})', 'Die(-1)',
                         'WeightedDie({1: -1})', '-2*Die(2)', 'ModDie(2)']
         for instruction in instructions:
-            self.assertRaises(errors, self.handler.request_dice_table_construction, instruction)
+            with pytest.raises(errors):
+                handler.request_dice_table_construction(instruction)
 
-    def test_make_dict_simple_table(self):
+    def test_make_dict_simple_table(self, handler):
         answer = make_dict(DiceTable.new().add_die(Die(4)))
         expected = {
             'name': '<DiceTable containing [1D4]>',
@@ -185,9 +185,9 @@ class TestRequestHandler(unittest.TestCase):
             }
         }
 
-        self.assertEqual(answer, expected)
+        assert answer ==  expected
 
-    def test_make_dict_large_number_table(self):
+    def test_make_dict_large_number_table(self, handler):
         table = DiceTable({1: 1, 2: 9 ** 351}, DiceRecord.new())
         answer = make_dict(table)
         expected = {
@@ -220,9 +220,9 @@ class TestRequestHandler(unittest.TestCase):
             }
         }
 
-        self.assertEqual(answer, expected)
+        assert answer ==  expected
 
-    def test_make_dict_complex_table(self):
+    def test_make_dict_complex_table(self, handler):
         table = DiceTable.new().add_die(WeightedDie({1: 1, 2: 99}), 3).add_die(Die(3), 4)
         answer = make_dict(table)
         expected = {
@@ -282,18 +282,18 @@ class TestRequestHandler(unittest.TestCase):
             },
         }
 
-        self.assertEqual(answer, expected)
+        assert answer ==  expected
 
-    def test_make_dict_mean_and_stddev_rounding(self):
+    def test_make_dict_mean_and_stddev_rounding(self, handler):
         table = DetailedDiceTable.new().add_die(WeightedDie({1: 1, 2: 2}))
         answer = make_dict(table)
-        self.assertEqual(table.calc.mean(), 1.6666666666666667)
-        self.assertEqual(answer['mean'], 1.667)
+        assert table.calc.mean() ==  1.6666666666666667
+        assert answer['mean'] ==  1.667
 
-        self.assertEqual(table.calc.stddev(3), 0.471)
-        self.assertEqual(answer['stddev'], 0.471)
+        assert table.calc.stddev(3) ==  0.471
+        assert answer['stddev'] ==  0.471
 
-    def test_make_dict_can_handle_gaps(self):
+    def test_make_dict_can_handle_gaps(self, handler):
         table = DiceTable.new().add_die(WeightedDie({1: 1, 3: 1}))
         answer = make_dict(table)
         expected = {
@@ -317,10 +317,10 @@ class TestRequestHandler(unittest.TestCase):
                 ]
             }
         }
-        self.assertEqual(answer, expected)
+        assert answer ==  expected
 
-    def test_get_response_empty_string_and_whitespace(self):
-        empty_str_answer = self.handler.get_response('')
+    def test_get_response_empty_string_and_whitespace(self, handler):
+        empty_str_answer = handler.get_response('')
 
         empty_response = {
             'data': {'x': (0,), 'y': (100.0,)},
@@ -340,13 +340,13 @@ class TestRequestHandler(unittest.TestCase):
                 'height': '1',
             }
         }
-        self.assertEqual(empty_str_answer, empty_response)
+        assert empty_str_answer ==  empty_response
 
-        whitespace_str_answer = self.handler.get_response('   ')
-        self.assertEqual(whitespace_str_answer, empty_response)
+        whitespace_str_answer = handler.get_response('   ')
+        assert whitespace_str_answer ==  empty_response
 
-    def test_get_response(self):
-        response = self.handler.get_response('Die(2)')
+    def test_get_response(self, handler):
+        response = handler.get_response('Die(2)')
         expected = {
             'diceStr': 'Die(2): 1',
             'name': '<DiceTable containing [1D2]>',
@@ -364,52 +364,19 @@ class TestRequestHandler(unittest.TestCase):
                 'height': '2',
             },
         }
-        self.assertEqual(response, expected)
+        assert response ==  expected
 
-    def test_get_response_error_response_all_errors(self):
-        instructions = '2*Die(5) & *Die(4)'
-        response = self.handler.get_response(instructions)
-        self.assertEqual(response,
-                         {"error": "invalid literal for int() with base 10: ' '", "type": "ValueError"})
-
-        instructions = '3 die(3)'
-        response = self.handler.get_response(instructions)
-        self.assertEqual(response,
-                         {'error': 'invalid syntax', 'type': 'SyntaxError'})
-
-        instructions = '3 * die("a")'
-        response = self.handler.get_response(instructions)
-        self.assertEqual(response,
-                         {'error': "'Str' object has no attribute 'n'", 'type': 'AttributeError'})
-
-        instructions = '3 * moddie(1)'
-        response = self.handler.get_response(instructions)
-        self.assertEqual(response,
-                         {'error': "__init__() missing 1 required positional argument: 'modifier'",
-                          'type': 'TypeError'})
-
-        instructions = 'didfde(3)'
-        response = self.handler.get_response(instructions)
-        self.assertEqual(response,
-                         {'error': 'Die class: <didfde> not recognized by parser.', 'type': 'ParseError'})
-
-        instructions = 'die(1, 2, 3)'
-        response = self.handler.get_response(instructions)
-        self.assertEqual(response,
-                         {'error': 'tuple index out of range', 'type': 'IndexError'})
-
-        instructions = 'die(30000)'
-        response = self.handler.get_response(instructions)
-        self.assertEqual(response,
-                         {'error': 'Max die_size: 500', 'type': 'LimitsError'})
-
-        instructions = 'die(-1)'
-        response = self.handler.get_response(instructions)
-        self.assertEqual(response,
-                         {'error': 'events may not be empty. a good alternative is the identity - {0: 1}.',
-                          'type': 'InvalidEventsError'})
-
-        instructions = '-2*die(2)'
-        response = self.handler.get_response(instructions)
-        self.assertEqual(response,
-                         {'error': 'Tried to add_die or remove_die with a negative number.', 'type': 'DiceRecordError'})
+    @pytest.mark.parametrize("instructions, expected", [
+        ('2*Die(5) & *Die(4)',{"error": "invalid literal for int() with base 10: ' '", "type": "ValueError"}),
+        ('3 die(3)',{'error': 'invalid syntax', 'type': 'SyntaxError'}),
+        ('3 * die("a")',{'error': "'Str' object has no attribute 'n'", 'type': 'AttributeError'}),
+        ('3 * moddie(1)',{'error': "__init__() missing 1 required positional argument: 'modifier'", 'type': 'TypeError'}),
+        ('didfde(3)',{'error': 'Die class: <didfde> not recognized by parser.', 'type': 'ParseError'}),
+        ('die(1, 2, 3)',{'error': 'tuple index out of range', 'type': 'IndexError'}),
+        ('die(30000)',{'error': 'Max die_size: 500', 'type': 'LimitsError'}),
+        ('die(-1)',{'error': 'events may not be empty. a good alternative is the identity - {0: 1}.', 'type': 'InvalidEventsError'}),
+        ('-2*die(2)',{'error': 'Tried to add_die or remove_die with a negative number.', 'type': 'DiceRecordError'}),
+    ])
+    def test_get_response_error_response_all_errors(self, handler, instructions, expected):
+        response = handler.get_response(instructions)
+        assert response == expected

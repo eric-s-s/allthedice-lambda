@@ -8,7 +8,7 @@ from dicetables.tools.alias_table import Alias
 class DiceTablesRequestHandler(object):
     def __init__(self, max_dice_value=12000) -> None:
         self._table = DiceTable.new()
-        self._parser = Parser(ignore_case=True)
+        self._parser = Parser.with_limits(ignore_case=True)
         self._max_dice_value = max_dice_value
 
     @property
@@ -33,7 +33,7 @@ class DiceTablesRequestHandler(object):
             else:
                 num, die = pair.split(num_delimiter)
                 number = int(num)
-            die = self._parser.parse_die_within_limits(die)
+            die = self._parser.parse_die(die)
             record = record.add_die(die, number)
 
         self._check_record_against_max_dice_value(record)
@@ -71,7 +71,6 @@ class DiceTablesRequestHandler(object):
             return make_dict(self._table)
         except errors as e:
             return {'error': e.args[0], 'type': e.__class__.__name__}
-
 
 
 def make_dict(dice_table: DiceTable):
