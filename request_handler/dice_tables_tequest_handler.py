@@ -15,8 +15,12 @@ from dicetables.tools.alias_table import Alias
 
 
 class DiceTablesRequestHandler(object):
-    def __init__(self, max_dice_value: int =12000, number_and_die_delimiter: str ="*",
-                 die_set_delimiter: str = "&") -> None:
+    def __init__(
+        self,
+        max_dice_value: int = 12000,
+        number_and_die_delimiter: str = "*",
+        die_set_delimiter: str = "&",
+    ) -> None:
         self._table = DiceTable.new()
         self._parser = Parser.with_limits(ignore_case=True)
         self._max_dice_value = max_dice_value
@@ -43,8 +47,13 @@ class DiceTablesRequestHandler(object):
     def _assert_delimiters(self):
         if self.number_and_die_delimiter == self.die_set_delimiter:
             raise ValueError("Delimiters may not be the same")
-        if (self.number_and_die_delimiter not in self.allowed_delimiters() or self.die_set_delimiter not in self.allowed_delimiters()):
-            raise ValueError("Delimiters may only be: {}".format(self.allowed_delimiters()))
+        if (
+            self.number_and_die_delimiter not in self.allowed_delimiters()
+            or self.die_set_delimiter not in self.allowed_delimiters()
+        ):
+            raise ValueError(
+                "Delimiters may only be: {}".format(self.allowed_delimiters())
+            )
 
     def create_dice_record(self, instructions):
 
@@ -65,7 +74,6 @@ class DiceTablesRequestHandler(object):
             die = self._parser.parse_die(die)
             record = record.add_die(die, number)
         return record
-
 
     def request_dice_table_construction(
         self, instructions: str, num_delimiter="*", pairs_delimiter="&"
@@ -112,11 +120,11 @@ class DiceTablesRequestHandler(object):
             raise ValueError("Delimiters may not be {!r}".format(reserved_characters))
 
     def _check_record_against_max_dice_value(self, record):
-        i = sum((max(len(die.get_dict()), die.get_size()) * number) for die, number in record.get_dict().items())
-        if (
-            i
-            > self._max_dice_value
-        ):
+        i = sum(
+            (max(len(die.get_dict()), die.get_size()) * number)
+            for die, number in record.get_dict().items()
+        )
+        if i > self._max_dice_value:
             raise ValueError(
                 "The sum of all max(die_size, len(die_dict))*die_number must be <= {}".format(
                     self._max_dice_value

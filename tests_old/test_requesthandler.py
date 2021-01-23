@@ -68,22 +68,37 @@ class TestRequestHandler(object):
         assert handler.max_dice_value == 2
 
     def test_init_assign_delimiters(self):
-        handler = DiceTablesRequestHandler(number_and_die_delimiter="$", die_set_delimiter="|")
+        handler = DiceTablesRequestHandler(
+            number_and_die_delimiter="$", die_set_delimiter="|"
+        )
         assert handler.number_and_die_delimiter == "$"
         assert handler.die_set_delimiter == "|"
 
     def test_init_same_delimiter_not_allowed(self):
         with pytest.raises(ValueError):
-            DiceTablesRequestHandler(number_and_die_delimiter="-", die_set_delimiter="-")
+            DiceTablesRequestHandler(
+                number_and_die_delimiter="-", die_set_delimiter="-"
+            )
 
-    @pytest.mark.parametrize("good_delimiter", DiceTablesRequestHandler.allowed_delimiters())
+    @pytest.mark.parametrize(
+        "good_delimiter", DiceTablesRequestHandler.allowed_delimiters()
+    )
     def test_init_all_good_delimiters(self, good_delimiter):
         other_delimiter = DiceTablesRequestHandler.allowed_delimiters()[0]
         if other_delimiter == good_delimiter:
             other_delimiter = DiceTablesRequestHandler.allowed_delimiters()[1]
-        DiceTablesRequestHandler(die_set_delimiter=good_delimiter, number_and_die_delimiter=other_delimiter)
+        DiceTablesRequestHandler(
+            die_set_delimiter=good_delimiter, number_and_die_delimiter=other_delimiter
+        )
 
-    @pytest.mark.parametrize('bad_delimiter', [el for el in string.printable if el not in DiceTablesRequestHandler.allowed_delimiters()])
+    @pytest.mark.parametrize(
+        "bad_delimiter",
+        [
+            el
+            for el in string.printable
+            if el not in DiceTablesRequestHandler.allowed_delimiters()
+        ],
+    )
     def test_init_bad_delimiter(self, bad_delimiter):
         with pytest.raises(ValueError):
             DiceTablesRequestHandler(number_and_die_delimiter=bad_delimiter)
@@ -99,7 +114,7 @@ class TestRequestHandler(object):
         expected = DiceRecord.new()
         assert handler.create_dice_record("   ") == expected
 
-    @pytest.mark.parametrize('die', DICE_EXAMPLES)
+    @pytest.mark.parametrize("die", DICE_EXAMPLES)
     def test_create_single_dice_record(self, handler, die):
         expected = DiceRecord.new().add_die(die, 1)
         assert handler.create_dice_record(repr(die)) == expected
@@ -128,7 +143,7 @@ class TestRequestHandler(object):
         expected = DiceRecord.new().add_die(Die(3), 1)
         request = "dIe(DiE_sIzE=3)"
         assert handler.create_dice_record(request) == expected
-        
+
     def test_request_dice_table_construction_request_exceeds_max_dice_value(
         self, handler
     ):
@@ -160,8 +175,6 @@ class TestRequestHandler(object):
         instructions = "WeightedDie({1: 1, 13: 1})"
         with pytest.raises(ValueError):
             handler.request_dice_table_construction(instructions)
-
-
 
     def test_disallowed_delimiters_raise_value_error(self, handler):
         expected_allowed = "!\"#$%&'*+./;<>?@\\^`|~\t\n\r"
