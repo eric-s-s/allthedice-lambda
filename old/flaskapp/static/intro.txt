@@ -1,3 +1,0 @@
-Not all dice rolls are created equal.  If you roll two six-sided dice, your
-chance of rolling a 7 is 17% while your chance of rolling 2 is just 3%.  This
-website calculates the probabilities for any combination of any kinds of dice.
