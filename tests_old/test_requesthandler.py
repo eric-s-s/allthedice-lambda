@@ -1,4 +1,3 @@
-import re
 import string
 
 import pytest
@@ -168,39 +167,53 @@ class TestRequestHandler(object):
         ],
     )
     def test_create_dice_record_each_error_raised(self, handler, instructions, error):
-        with pytest.raises(error) as e:
+        with pytest.raises(error):
             handler.create_dice_record(instructions)
 
-    # TODO
-    def test_request_dice_table_request_exceeds_max_dice_value(self, handler):
-        handler = DiceTablesRequestHandler(max_dice_value=12)
-        handler.request_dice_table_construction("2*Die(6)")
-        handler.request_dice_table_construction("6*WeightedDie({1: 2, 2: 10})")
-        msg = "The sum of all max(die_size, len(die_dict))*die_number must be <= 12"
-        with pytest.raises(ValueError, match=re.escape(msg)):
-            instructions = "1*Die(6)&1*Die(7)"
-            handler.request_dice_table_construction(instructions)
+    def test_assert_dice_record_within_limits_no_error(self):
+        handler = DiceTablesRequestHandler(max_dice_value=6)
+        record = DiceRecord.new().add_die(Die(3), 2)
+        handler.assert_dice_record_within_limits(record)
 
-    def test_request_dice_table_construction_exceed_max_dice_value_based_on_max_of_dict_len_and_die_size(
-        self,
-    ):
-        handler = DiceTablesRequestHandler(max_dice_value=12)
-
-        assert len(Exploding(Die(4)).get_dict()) == 10
-        handler.request_dice_table_construction("Exploding(Die(4))")
-        assert len(Exploding(Die(5)).get_dict()) == 13
-        assert Exploding(Die(5)).get_size() == 5
-        exploding_instructions = "Exploding(Die(5))"
+    def test_assert_dice_record_within_limits_error(self):
+        handler = DiceTablesRequestHandler(max_dice_value=6)
+        record = DiceRecord.new().add_die(Die(3), 1).add_die(Die(4), 1)
         with pytest.raises(ValueError):
-            handler.request_dice_table_construction(exploding_instructions)
+            handler.assert_dice_record_within_limits(record)
 
-        assert WeightedDie({1: 1, 12: 1}).get_size() == 12
-        handler.request_dice_table_construction("WeightedDie({1: 1, 12: 1})")
-        assert len(WeightedDie({1: 1, 13: 1}).get_dict()) == 2
-        assert WeightedDie({1: 1, 13: 1}).get_size() == 13
-        instructions = "WeightedDie({1: 1, 13: 1})"
+    def test_assert_dice_record_within_limits_based_on_dictionary_size(self):
+        handler = DiceTablesRequestHandler(max_dice_value=2)
+        die = WeightedDie({1: 1, 10: 1})
+        assert die.get_size() == 10
+        assert len(die.get_dict()) == 2
+        record = DiceRecord.new().add_die(die, 1)
+
+        handler.assert_dice_record_within_limits(record)
+
+    def test_assert_dice_record_within_limits_dictionary_example(self):
+        die = Exploding(Die(6))
+        assert len(die.get_dict()) == 16
+
+        record = DiceRecord.new().add_die(die, 2)
+
+        handler = DiceTablesRequestHandler(max_dice_value=32)
+        handler.assert_dice_record_within_limits(record)
+
+        handler_that_errors = DiceTablesRequestHandler(max_dice_value=31)
         with pytest.raises(ValueError):
-            handler.request_dice_table_construction(instructions)
+            handler_that_errors.assert_dice_record_within_limits(record)
+
+    @pytest.mark.parametrize("times, errors", [(1, False), (2, False), (3, True)])
+    def test_assert_dice_record_measures_die_times(self, times, errors):
+        max_dice_value = 2
+        handler = DiceTablesRequestHandler(max_dice_value=max_dice_value)
+        die = Die(1)
+        record = DiceRecord.new().add_die(die, times)
+        if errors:
+            with pytest.raises(ValueError):
+                handler.assert_dice_record_within_limits(record)
+        else:
+            handler.assert_dice_record_within_limits(record)
 
     def test_request_dice_table_construction_all_errors_are_caught(self, handler):
         errors = (

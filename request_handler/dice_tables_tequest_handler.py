@@ -29,19 +29,19 @@ class DiceTablesRequestHandler(object):
         self._assert_delimiters()
 
     @property
-    def max_dice_value(self):
+    def max_dice_value(self) -> int:
         return self._max_dice_value
 
     @property
-    def number_and_die_delimiter(self):
+    def number_and_die_delimiter(self) -> str:
         return self._num_and_die_delimiter
 
     @property
-    def die_set_delimiter(self):
+    def die_set_delimiter(self) -> str:
         return self._die_set_delimiter
 
     @staticmethod
-    def allowed_delimiters():
+    def allowed_delimiters() -> str:
         return "!\"#$%&'*+./;<>?@\\^`|~\t\n\r"
 
     def _assert_delimiters(self):
@@ -55,7 +55,7 @@ class DiceTablesRequestHandler(object):
                 "Delimiters may only be: {}".format(self.allowed_delimiters())
             )
 
-    def create_dice_record(self, instructions):
+    def create_dice_record(self, instructions: str) -> DiceRecord:
 
         record = DiceRecord.new()
 
@@ -74,6 +74,15 @@ class DiceTablesRequestHandler(object):
             die = self._parser.parse_die(die)
             record = record.add_die(die, number)
         return record
+
+    def assert_dice_record_within_limits(self, record: DiceRecord) -> None:
+        all_record_dicts = sum(
+            len(die.get_dict()) * number for die, number in record.get_dict().items()
+        )
+        if all_record_dicts > self.max_dice_value:
+            raise ValueError(
+                f"Record: {record} has a sum of dictionaries greater than {self.max_dice_value}"
+            )
 
     def request_dice_table_construction(
         self, instructions: str, num_delimiter="*", pairs_delimiter="&"
