@@ -135,18 +135,44 @@ class TestRequestHandler(object):
         expected = DiceRecord.new().add_die(Die(2), 2).add_die(Die(3), 3)
         assert handler.create_dice_record("3*Die(3) & 2*Die(2)") == expected
 
-    def test_create_dice_record_construction_with_kwargs(self, handler):
+    def test_create_dice_record_with_kwargs(self, handler):
         expected = DiceRecord.new().add_die(ModDie(2, 3), 1)
         assert handler.create_dice_record("ModDie(die_size=2, modifier=3)") == expected
 
-    def test_request_dice_table_construction_mixed_case(self, handler):
+    def test_create_dice_record_mixed_case(self, handler):
         expected = DiceRecord.new().add_die(Die(3), 1)
         request = "dIe(DiE_sIzE=3)"
         assert handler.create_dice_record(request) == expected
 
-    def test_request_dice_table_construction_request_exceeds_max_dice_value(
-        self, handler
-    ):
+    @pytest.mark.parametrize(
+        "instructions, error",
+        [
+            ("2*Die(5) & *Die(4)", ValueError),
+            ('3 * die("a")', ValueError),
+            ("* Die(4)", ValueError),
+            ("WeightedDie({-1: 1})", ValueError),
+            ("Die(4) * 3 * Die(5)", ValueError),
+            ("2 * die(5) $ 4 * die(6)", ValueError),
+            ("3 die(3)", SyntaxError),
+            ("4 $ die(5)", SyntaxError),
+            ("die(5", SyntaxError),
+            ("3 * moddie(2)", ParseError),
+            ("die(1, 2, 3)", ParseError),
+            ("notadie(5)", ParseError),
+            ("die(30000)", LimitsError),
+            ("-2*die(2)", DiceRecordError),
+            ("3 & die(3)", AttributeError),
+            ("WeightedDie({1, 2})", AttributeError),
+            ("WeightedDie({1: -1})", InvalidEventsError),
+            ("die(-1)", InvalidEventsError),
+        ],
+    )
+    def test_create_dice_record_each_error_raised(self, handler, instructions, error):
+        with pytest.raises(error) as e:
+            handler.create_dice_record(instructions)
+
+    # TODO
+    def test_request_dice_table_request_exceeds_max_dice_value(self, handler):
         handler = DiceTablesRequestHandler(max_dice_value=12)
         handler.request_dice_table_construction("2*Die(6)")
         handler.request_dice_table_construction("6*WeightedDie({1: 2, 2: 10})")
@@ -174,54 +200,6 @@ class TestRequestHandler(object):
         assert WeightedDie({1: 1, 13: 1}).get_size() == 13
         instructions = "WeightedDie({1: 1, 13: 1})"
         with pytest.raises(ValueError):
-            handler.request_dice_table_construction(instructions)
-
-    def test_disallowed_delimiters_raise_value_error(self, handler):
-        expected_allowed = "!\"#$%&'*+./;<>?@\\^`|~\t\n\r"
-        answer = ""
-        for char in string.printable:
-            try:
-                handler.request_dice_table_construction("Die(6)", num_delimiter=char)
-                answer += char
-            except ValueError as e:
-                assert e.args[0].startswith("Delimiters may not be")
-        assert expected_allowed == answer
-
-    def test_request_dice_table_construction_with_all_allowed_delimiters(self, handler):
-        allowed = "!\"#$%&'*+./;<>?@\\^`|~\t\n\r"
-
-        for index, num_delimiter in enumerate(allowed):
-            pairs_delimiter = allowed[index - 1]
-            request_str = f"2{num_delimiter}Die(2){pairs_delimiter}Die(3)"
-            expected = DiceTable.new().add_die(Die(2), 2).add_die(Die(3))
-
-            handler.request_dice_table_construction(
-                request_str,
-                num_delimiter=num_delimiter,
-                pairs_delimiter=pairs_delimiter,
-            )
-            assert handler.get_table() == expected
-
-    @pytest.mark.parametrize(
-        "instructions, error",
-        [
-            ("2*Die(5) & *Die(4)", ValueError),
-            ("3 die(3)", SyntaxError),
-            ('3 * die("a")', ValueError),
-            ("3 * moddie(2)", ParseError),
-            ("didfde(3)", ParseError),
-            ("die(1, 2, 3)", ParseError),
-            ("die(30000)", LimitsError),
-            ("die(-1)", InvalidEventsError),
-            ("-2*die(2)", DiceRecordError),
-        ],
-    )
-    def test_request_dice_table_construction_each_error_raised(
-        self, handler, instructions, error
-    ):
-        if instructions == "die(1, 2, 3)":
-            print("HIIII", handler.get_response(instructions))
-        with pytest.raises(error):
             handler.request_dice_table_construction(instructions)
 
     def test_request_dice_table_construction_all_errors_are_caught(self, handler):
