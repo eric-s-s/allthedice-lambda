@@ -1,5 +1,3 @@
-import string
-
 from dicetables import (
     Parser,
     DiceTable,
@@ -21,7 +19,6 @@ class DiceTablesRequestHandler(object):
         number_and_die_delimiter: str = "*",
         die_set_delimiter: str = "&",
     ) -> None:
-        self._table = DiceTable.new()
         self._parser = Parser.with_limits(ignore_case=True)
         self._max_dice_value = max_dice_value
         self._num_and_die_delimiter = number_and_die_delimiter
@@ -84,72 +81,11 @@ class DiceTablesRequestHandler(object):
                 f"Record: {record} has a sum of dictionaries greater than {self.max_dice_value}"
             )
 
-    def request_dice_table_construction(
-        self, instructions: str, num_delimiter="*", pairs_delimiter="&"
-    ) -> None:
-
-        self._raise_error_for_bad_delimiter(num_delimiter, pairs_delimiter)
-
-        record = DiceRecord.new()
-
-        if instructions.strip() == "":
-            number_die_pairs = []
-        else:
-            number_die_pairs = instructions.split(pairs_delimiter)
-
-        for pair in number_die_pairs:
-            if num_delimiter not in pair:
-                number = 1
-                die = pair
-            else:
-                num, die = pair.split(num_delimiter)
-                number = int(num)
-            die = self._parser.parse_die(die)
-            record = record.add_die(die, number)
-
-        self._check_record_against_max_dice_value(record)
-
-        self._make_table(record)
-
-    def _make_table(self, record: DiceRecord):
-        table = DiceTable.new()
-        for die, num in record.get_dict().items():
-            table = table.add_die(die, num)
-        self._table = table
-
-    @staticmethod
-    def _raise_error_for_bad_delimiter(num_delimiter, pairs_delimiter):
-        reserved_characters = (
-            "_[]{}(),: -=\x0b\x0c" + string.digits + string.ascii_letters
-        )
-        if (
-            num_delimiter in reserved_characters
-            or pairs_delimiter in reserved_characters
-        ):
-            raise ValueError("Delimiters may not be {!r}".format(reserved_characters))
-
-    def _check_record_against_max_dice_value(self, record):
-        i = sum(
-            (max(len(die.get_dict()), die.get_size()) * number)
-            for die, number in record.get_dict().items()
-        )
-        if i > self._max_dice_value:
-            raise ValueError(
-                "The sum of all max(die_size, len(die_dict))*die_number must be <= {}".format(
-                    self._max_dice_value
-                )
-            )
-
-    def get_table(self):
-        return self._table
-
     def get_response(self, input_str):
         errors = (
             ValueError,
             SyntaxError,
             AttributeError,
-            IndexError,
-            TypeError,
             ParseError,
             LimitsError,
             InvalidEventsError,
@@ -157,10 +93,19 @@ class DiceTablesRequestHandler(object):
         )
 
         try:
-            self.request_dice_table_construction(input_str)
-            return make_dict(self._table)
+            record = self.create_dice_record(input_str)
+            self.assert_dice_record_within_limits(record)
+            table = construct_dice_table(record)
+            return make_dict(table)
         except errors as e:
             return {"error": e.args[0], "type": e.__class__.__name__}
+
+
+def construct_dice_table(record: DiceRecord) -> DiceTable:
+    table = DiceTable.new()
+    for die, number in record.get_dict().items():
+        table = table.add_die(die, number)
+    return table
 
 
 def make_dict(dice_table: DiceTable):

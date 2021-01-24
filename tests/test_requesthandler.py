@@ -27,6 +27,7 @@ from dicetables import (
 from request_handler.dice_tables_tequest_handler import (
     DiceTablesRequestHandler,
     make_dict,
+    construct_dice_table,
 )
 
 
@@ -203,52 +204,45 @@ class TestRequestHandler(object):
         with pytest.raises(ValueError):
             handler_that_errors.assert_dice_record_within_limits(record)
 
-    @pytest.mark.parametrize("times, errors", [(1, False), (2, False), (3, True)])
-    def test_assert_dice_record_measures_die_times(self, times, errors):
+    @pytest.mark.parametrize("times, is_error", [(1, False), (2, False), (3, True)])
+    def test_assert_dice_record_measures_die_times(self, times, is_error):
         max_dice_value = 2
-        handler = DiceTablesRequestHandler(max_dice_value=max_dice_value)
         die = Die(1)
+        handler = DiceTablesRequestHandler(max_dice_value=max_dice_value)
         record = DiceRecord.new().add_die(die, times)
-        if errors:
+        if is_error:
             with pytest.raises(ValueError):
                 handler.assert_dice_record_within_limits(record)
         else:
             handler.assert_dice_record_within_limits(record)
 
-    def test_request_dice_table_construction_all_errors_are_caught(self, handler):
-        errors = (
-            ValueError,
-            SyntaxError,
-            AttributeError,
-            IndexError,
-            TypeError,
-            ParseError,
-            LimitsError,
-            InvalidEventsError,
-            DiceRecordError,
+    def test_construct_dice_table_single_die(self):
+        die = Die(2)
+        number = 3
+        record = DiceRecord.new().add_die(die, number)
+        actual = construct_dice_table(record)
+
+        expected = DiceTable.new().add_die(die, number)
+        assert actual == expected
+
+    def test_construct_dice_table_many_dice(self):
+        first_die = Die(2)
+        first_number = 3
+        second_die = WeightedDie({1: 2, 2: 1})
+        second_number = 2
+        record = (
+            DiceRecord.new()
+            .add_die(first_die, first_number)
+            .add_die(second_die, second_number)
         )
-        instructions = [
-            "* Die(4)",
-            "3 die(3)",
-            "3 & die(3)",
-            "Die(4) * 3 * Die(5)",
-            "4 $ die(5)",
-            "2 * die(5) $ 4 * die(6)",
-            'die("a")',
-            "die(5",
-            "die(5000)",
-            "notadie(5)",
-            "die(1, 2, 3)",
-            "WeightedDie({1, 2})",
-            "WeightedDie({-1: 1})",
-            "Die(-1)",
-            "WeightedDie({1: -1})",
-            "-2*Die(2)",
-            "ModDie(2)",
-        ]
-        for instruction in instructions:
-            with pytest.raises(errors):
-                handler.request_dice_table_construction(instruction)
+        actual = construct_dice_table(record)
+
+        expected = (
+            DiceTable.new()
+            .add_die(first_die, first_number)
+            .add_die(second_die, second_number)
+        )
+        assert actual == expected
 
     def test_make_dict_simple_table(self, handler):
         answer = make_dict(DiceTable.new().add_die(Die(4)))
@@ -454,7 +448,7 @@ class TestRequestHandler(object):
         whitespace_str_answer = handler.get_response("   ")
         assert whitespace_str_answer == empty_response
 
-    def test_get_response(self, handler):
+    def test_get_response_single_die(self, handler):
         response = handler.get_response("Die(2)")
         expected = {
             "diceStr": "Die(2): 1",
@@ -472,6 +466,30 @@ class TestRequestHandler(object):
                 "aliases": [
                     {"alternate": "2", "primary": "2", "primaryHeight": "2"},
                     {"alternate": "1", "primary": "1", "primaryHeight": "2"},
+                ],
+                "height": "2",
+            },
+        }
+        assert response == expected
+
+    def test_get_response_multi_die(self, handler):
+        response = handler.get_response("Die(2) & 2 * modifier(3)")
+        expected = {
+            "diceStr": "Modifier(3): 2\nDie(2): 1",
+            "name": "<DiceTable containing [+3, +3, 1D2]>",
+            "data": {"x": (7, 8), "y": (50.0, 50.0)},
+            "tableString": "7: 1\n8: 1\n",
+            "forSciNum": [
+                {"roll": 7, "mantissa": "1.00000", "exponent": "0"},
+                {"roll": 8, "mantissa": "1.00000", "exponent": "0"},
+            ],
+            "range": (7, 8),
+            "mean": 7.5,
+            "stddev": 0.5,
+            "roller": {
+                "aliases": [
+                    {"alternate": "8", "primary": "8", "primaryHeight": "2"},
+                    {"alternate": "7", "primary": "7", "primaryHeight": "2"},
                 ],
                 "height": "2",
             },
@@ -530,6 +548,13 @@ class TestRequestHandler(object):
                 {
                     "error": "Tried to add_die or remove_die with a negative number.",
                     "type": "DiceRecordError",
+                },
+            ),
+            (
+                "3 & die(3)",
+                {
+                    "error": "'Constant' object has no attribute 'func'",
+                    "type": "AttributeError",
                 },
             ),
         ],
