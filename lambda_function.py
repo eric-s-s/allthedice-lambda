@@ -26,9 +26,7 @@ class Response:
         return {
             "body": json.dumps(self.body),
             "statusCode": self.status.value,
-            "headers": {
-                "Content-Type": "application/json"
-            }
+            "headers": {"Content-Type": "application/json"},
         }
 
 
