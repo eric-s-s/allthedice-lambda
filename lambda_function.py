@@ -1,3 +1,4 @@
+from base64 import b64decode
 import json
 from dataclasses import dataclass
 from enum import Enum
@@ -33,6 +34,8 @@ class Response:
 def lambda_handler(event: dict, context):
     try:
         body = event["body"]
+        if event["isBase64Encoded"]:
+            body = b64decode(body)
         if not isinstance(body, dict):
             body = json.loads(body)
         base_response = HANDLER.get_response(body["buildString"])
@@ -42,4 +45,5 @@ def lambda_handler(event: dict, context):
         return Response(status, base_response).to_json()
     except Exception as e:
         logger.exception(e)
+        logger.error(event)
         return Response(Status.BAD_REQUEST, {"message": "could not process"}).to_json()
