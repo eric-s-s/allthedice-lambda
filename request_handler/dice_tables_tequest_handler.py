@@ -98,7 +98,7 @@ class DiceTablesRequestHandler(object):
             table = construct_dice_table(record)
             return make_dict(table)
         except errors as e:
-            return {"error": e.args[0], "type": e.__class__.__name__}
+            return {"errorMessage": e.args[0], "errorType": e.__class__.__name__}
 
 
 def construct_dice_table(record: DiceRecord) -> DiceTable:

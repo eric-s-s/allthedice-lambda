@@ -502,59 +502,59 @@ class TestRequestHandler(object):
             (
                 "2*Die(5) & *Die(4)",
                 {
-                    "error": "invalid literal for int() with base 10: ' '",
-                    "type": "ValueError",
+                    "errorMessage": "invalid literal for int() with base 10: ' '",
+                    "errorType": "ValueError",
                 },
             ),
-            ("3 die(3)", {"error": "invalid syntax", "type": "SyntaxError"}),
+            ("3 die(3)", {"errorMessage": "invalid syntax", "errorType": "SyntaxError"}),
             (
                 '3 * die("a")',
-                {"error": "Expected an integer, but got: 'a'", "type": "ValueError"},
+                {"errorMessage": "Expected an integer, but got: 'a'", "errorType": "ValueError"},
             ),
             (
                 "3 * moddie(1)",
                 {
-                    "error": "missing a required argument: 'modifier' for class: moddie",
-                    "type": "ParseError",
+                    "errorMessage": "missing a required argument: 'modifier' for class: moddie",
+                    "errorType": "ParseError",
                 },
             ),
             (
                 "didfde(3)",
                 {
-                    "error": "Die class: <didfde> not recognized by parser.",
-                    "type": "ParseError",
+                    "errorMessage": "Die class: <didfde> not recognized by parser.",
+                    "errorType": "ParseError",
                 },
             ),
             (
                 "die(1, 2, 3)",
-                {"error": "Too many parameters for class: die", "type": "ParseError"},
+                {"errorMessage": "Too many parameters for class: die", "errorType": "ParseError"},
             ),
             (
                 "die(30000)",
                 {
-                    "error": "A die of size: 30000 is greater than the allowed max: 500",
-                    "type": "LimitsError",
+                    "errorMessage": "A die of size: 30000 is greater than the allowed max: 500",
+                    "errorType": "LimitsError",
                 },
             ),
             (
                 "die(-1)",
                 {
-                    "error": "events may not be empty. a good alternative is the identity - {0: 1}.",
-                    "type": "InvalidEventsError",
+                    "errorMessage": "events may not be empty. a good alternative is the identity - {0: 1}.",
+                    "errorType": "InvalidEventsError",
                 },
             ),
             (
                 "-2*die(2)",
                 {
-                    "error": "Tried to add_die or remove_die with a negative number.",
-                    "type": "DiceRecordError",
+                    "errorMessage": "Tried to add_die or remove_die with a negative number.",
+                    "errorType": "DiceRecordError",
                 },
             ),
             (
                 "3 & die(3)",
                 {
-                    "error": "'Constant' object has no attribute 'func'",
-                    "type": "AttributeError",
+                    "errorMessage": "'Constant' object has no attribute 'func'",
+                    "errorType": "AttributeError",
                 },
             ),
         ],

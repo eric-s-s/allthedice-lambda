@@ -6,7 +6,7 @@ from logging import getLogger, INFO
 
 from request_handler.dice_tables_tequest_handler import DiceTablesRequestHandler
 
-HANDLER = DiceTablesRequestHandler(max_dice_value=6000)
+HANDLER = DiceTablesRequestHandler(max_dice_value=4000)
 
 logger = getLogger(__name__)
 logger.setLevel(INFO)
@@ -42,7 +42,7 @@ def lambda_handler(event: dict, context):
         logger.info(f"request: {body}")
         base_response = HANDLER.get_response(body["buildString"])
         status = Status.OK
-        if "error" in base_response:
+        if "errorMessage" in base_response:
             status = Status.NOT_FOUND
         response = Response(status, base_response).to_json()
         logger.info(f"response: {response}"[:200])
@@ -50,4 +50,4 @@ def lambda_handler(event: dict, context):
     except Exception as e:
         logger.exception(e)
         logger.error(event)
-        return Response(Status.BAD_REQUEST, {"message": "could not process"}).to_json()
+        return Response(Status.BAD_REQUEST, {"errorMessage": "could not process"}).to_json()

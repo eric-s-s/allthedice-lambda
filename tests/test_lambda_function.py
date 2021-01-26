@@ -20,7 +20,7 @@ def test_bad_request():
     response = lambda_handler(event, None)
 
     expected_status = 400
-    expected_body = {"message": "could not process"}
+    expected_body = {"errorMessage": "could not process"}
     assert response == make_response_for_tests(expected_body, expected_status)
 
 
@@ -41,8 +41,8 @@ def test_bad_build_string_request():
 
     expected_status = 404
     expected_body = {
-        "error": "Too many parameters for class: Die",
-        "type": "ParseError",
+        "errorMessage": "Too many parameters for class: Die",
+        "errorType": "ParseError",
     }
     assert response == make_response_for_tests(expected_body, expected_status)
 
