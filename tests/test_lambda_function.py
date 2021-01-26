@@ -1,5 +1,8 @@
+from base64 import b64encode
 import json
 from unittest.mock import patch
+
+import pytest
 
 from lambda_function import lambda_handler
 
@@ -33,7 +36,7 @@ def test_bad_request_logs_exception():
 
 
 def test_bad_build_string_request():
-    event = {"body": {"buildString": "Die(1, 2)"}}
+    event = {"body": {"buildString": "Die(1, 2)"}, "isBase64Encoded": False}
     response = lambda_handler(event, None)
 
     expected_status = 404
@@ -44,12 +47,14 @@ def test_bad_build_string_request():
     assert response == make_response_for_tests(expected_body, expected_status)
 
 
-def test_good_build_string_request():
-    event = {"body": {"buildString": "Die(1)"}}
-    response = lambda_handler(event, None)
+@pytest.fixture
+def event():
+    return {"body": {"buildString": "Die(1)"}, "isBase64Encoded": False}
 
-    expected_status = 200
-    expected_body = {
+
+@pytest.fixture
+def expected_body():
+    return {
         "diceStr": "Die(1): 1",
         "name": "<DiceTable containing [1D1]>",
         "data": {"x": [1], "y": [100.0]},
@@ -63,4 +68,25 @@ def test_good_build_string_request():
             "aliases": [{"primary": "1", "alternate": "1", "primaryHeight": "1"}],
         },
     }
+
+
+def test_good_build_string_request(event, expected_body):
+    response = lambda_handler(event, None)
+
+    expected_status = 200
+    assert response == make_response_for_tests(expected_body, expected_status)
+
+
+def test_good_build_string_json_encoded(event, expected_body):
+    event["body"] = json.dumps(event["body"])
+    response = lambda_handler(event, None)
+    expected_status = 200
+    assert response == make_response_for_tests(expected_body, expected_status)
+
+
+def test_good_build_string_base64_encoded(event, expected_body):
+    event["body"] = b64encode(json.dumps(event["body"]).encode())
+    event["isBase64Encoded"] = True
+    response = lambda_handler(event, None)
+    expected_status = 200
     assert response == make_response_for_tests(expected_body, expected_status)

@@ -2,13 +2,14 @@ from base64 import b64decode
 import json
 from dataclasses import dataclass
 from enum import Enum
-from logging import getLogger
+from logging import getLogger, INFO
 
 from request_handler.dice_tables_tequest_handler import DiceTablesRequestHandler
 
 HANDLER = DiceTablesRequestHandler(max_dice_value=6000)
 
 logger = getLogger(__name__)
+logger.setLevel(INFO)
 
 
 class Status(Enum):
@@ -38,11 +39,14 @@ def lambda_handler(event: dict, context):
             body = b64decode(body)
         if not isinstance(body, dict):
             body = json.loads(body)
+        logger.info(f"request: {body}")
         base_response = HANDLER.get_response(body["buildString"])
         status = Status.OK
         if "error" in base_response:
             status = Status.NOT_FOUND
-        return Response(status, base_response).to_json()
+        response = Response(status, base_response).to_json()
+        logger.info(f"response: {response}"[:200])
+        return response
     except Exception as e:
         logger.exception(e)
         logger.error(event)
