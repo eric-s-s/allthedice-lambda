@@ -3,3 +3,4 @@
 
 .idea
 *.pyc
+acceptance_test_data/run_results.json
