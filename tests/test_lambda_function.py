@@ -47,6 +47,30 @@ def test_bad_build_string_request():
     assert response == make_response_for_tests(expected_body, expected_status)
 
 
+def test_invalid_build_string_request():
+    event = {"body": {"buildString": "3 die(3)"}, "isBase64Encoded": False}
+    response = lambda_handler(event, None)
+
+    expected_status = 404
+    expected_body = {
+        "errorMessage": "could not parse build string",
+        "errorType": "InvalidBuildStringError",
+    }
+    assert response == make_response_for_tests(expected_body, expected_status)
+
+
+def test_build_string_over_max_dice_value_request():
+    event = {"body": {"buildString": "4001*Die(1)"}, "isBase64Encoded": False}
+    response = lambda_handler(event, None)
+
+    expected_status = 404
+    expected_body = {
+        "errorMessage": "Record: DiceRecord({Die(1): 4001}) has a sum of dictionaries greater than 4000",
+        "errorType": "LimitsError",
+    }
+    assert response == make_response_for_tests(expected_body, expected_status)
+
+
 @pytest.fixture
 def event():
     return {"body": {"buildString": "Die(1)"}, "isBase64Encoded": False}

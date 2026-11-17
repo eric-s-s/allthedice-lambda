@@ -9,6 +9,8 @@ from dicetables import (
     DiceRecordError,
     Roller,
 )
+from logging import getLogger
+
 from dicetables.tools.alias_table import Alias
 
 
@@ -77,28 +79,32 @@ class DiceTablesRequestHandler(object):
             len(die.get_dict()) * number for die, number in record.get_dict().items()
         )
         if all_record_dicts > self.max_dice_value:
-            raise ValueError(
+            raise LimitsError(
                 f"Record: {record} has a sum of dictionaries greater than {self.max_dice_value}"
             )
 
     def get_response(self, input_str):
-        errors = (
-            ValueError,
-            SyntaxError,
-            AttributeError,
+        dice_tables_errors = (
             ParseError,
             LimitsError,
             InvalidEventsError,
             DiceRecordError,
         )
+        invalid_build_string_errors = (ValueError, SyntaxError, AttributeError)
 
         try:
             record = self.create_dice_record(input_str)
             self.assert_dice_record_within_limits(record)
             table = construct_dice_table(record)
             return make_dict(table)
-        except errors as e:
+        except dice_tables_errors as e:
             return {"errorMessage": e.args[0], "errorType": e.__class__.__name__}
+        except invalid_build_string_errors as e:
+            getLogger(__name__).info(f"invalid build string: {input_str!r}: {e!r}")
+            return {
+                "errorMessage": "could not parse build string",
+                "errorType": "InvalidBuildStringError",
+            }
 
 
 def construct_dice_table(record: DiceRecord) -> DiceTable:

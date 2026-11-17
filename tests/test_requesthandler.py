@@ -1,4 +1,5 @@
 import string
+from unittest.mock import patch
 
 import pytest
 from dicetables import (
@@ -179,7 +180,7 @@ class TestRequestHandler(object):
     def test_assert_dice_record_within_limits_error(self):
         handler = DiceTablesRequestHandler(max_dice_value=6)
         record = DiceRecord.new().add_die(Die(3), 1).add_die(Die(4), 1)
-        with pytest.raises(ValueError):
+        with pytest.raises(LimitsError):
             handler.assert_dice_record_within_limits(record)
 
     def test_assert_dice_record_within_limits_based_on_dictionary_size(self):
@@ -201,7 +202,7 @@ class TestRequestHandler(object):
         handler.assert_dice_record_within_limits(record)
 
         handler_that_errors = DiceTablesRequestHandler(max_dice_value=31)
-        with pytest.raises(ValueError):
+        with pytest.raises(LimitsError):
             handler_that_errors.assert_dice_record_within_limits(record)
 
     @pytest.mark.parametrize("times, is_error", [(1, False), (2, False), (3, True)])
@@ -211,7 +212,7 @@ class TestRequestHandler(object):
         handler = DiceTablesRequestHandler(max_dice_value=max_dice_value)
         record = DiceRecord.new().add_die(die, times)
         if is_error:
-            with pytest.raises(ValueError):
+            with pytest.raises(LimitsError):
                 handler.assert_dice_record_within_limits(record)
         else:
             handler.assert_dice_record_within_limits(record)
@@ -497,20 +498,34 @@ class TestRequestHandler(object):
         assert response == expected
 
     @pytest.mark.parametrize(
+        "instructions",
+        [
+            "2*Die(5) & *Die(4)",
+            "* Die(4)",
+            "Die(4) * 3 * Die(5)",
+            "2 * die(5) $ 4 * die(6)",
+            '3 * die("a")',
+            "WeightedDie({-1: 1})",
+            "3 die(3)",
+            "4 $ die(5)",
+            "die(5",
+            "3 & die(3)",
+            "WeightedDie({1, 2})",
+        ],
+    )
+    def test_get_response_non_dice_tables_errors_are_invalid_build_string(
+        self, handler, instructions
+    ):
+        expected = {
+            "errorMessage": "could not parse build string",
+            "errorType": "InvalidBuildStringError",
+        }
+        actual = handler.get_response(instructions)
+        assert actual == expected
+
+    @pytest.mark.parametrize(
         "instructions, expected",
         [
-            (
-                "2*Die(5) & *Die(4)",
-                {
-                    "errorMessage": "invalid literal for int() with base 10: ' '",
-                    "errorType": "ValueError",
-                },
-            ),
-            ("3 die(3)", {"errorMessage": "invalid syntax", "errorType": "SyntaxError"}),
-            (
-                '3 * die("a")',
-                {"errorMessage": "Expected an integer, but got: 'a'", "errorType": "ValueError"},
-            ),
             (
                 "3 * moddie(1)",
                 {
@@ -544,23 +559,37 @@ class TestRequestHandler(object):
                 },
             ),
             (
+                "WeightedDie({1: -1})",
+                {
+                    "errorMessage": "no negative or zero occurrences in Events.get_dict()",
+                    "errorType": "InvalidEventsError",
+                },
+            ),
+            (
                 "-2*die(2)",
                 {
                     "errorMessage": "Tried to add_die or remove_die with a negative number.",
                     "errorType": "DiceRecordError",
                 },
             ),
-            (
-                "3 & die(3)",
-                {
-                    "errorMessage": "'Constant' object has no attribute 'func'",
-                    "errorType": "AttributeError",
-                },
-            ),
         ],
     )
-    def test_get_response_error_response_all_errors(
+    def test_get_response_dice_tables_errors_pass_through(
         self, handler, instructions, expected
     ):
         response = handler.get_response(instructions)
         assert response == expected
+
+    def test_get_response_record_over_max_dice_value_is_limits_error(self):
+        handler = DiceTablesRequestHandler(max_dice_value=6)
+        expected = {
+            "errorMessage": "Record: DiceRecord({Die(4): 2}) has a sum of dictionaries greater than 6",
+            "errorType": "LimitsError",
+        }
+        actual = handler.get_response("2*Die(4)")
+        assert actual == expected
+
+    def test_get_response_unlisted_error_is_not_caught(self, handler):
+        with patch.object(handler, "create_dice_record", side_effect=TypeError("boom")):
+            with pytest.raises(TypeError):
+                handler.get_response("Die(6)")

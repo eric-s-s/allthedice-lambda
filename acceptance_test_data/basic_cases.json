@@ -2898,39 +2898,48 @@
     }
   },
   {
-    "description": "ValueError: the delimiter with no number before it",
+    "description": "InvalidBuildStringError: the delimiter with no number before it",
     "buildString": "2*Die(5) & *Die(4)",
     "statusCode": 404,
     "response": {
-      "errorMessage": "invalid literal for int() with base 10: ' '",
-      "errorType": "ValueError"
+      "errorMessage": "could not parse build string",
+      "errorType": "InvalidBuildStringError"
     }
   },
   {
-    "description": "ValueError: the record is over the lambda's max_dice_value of 4000",
+    "description": "InvalidBuildStringError: a number and a die with no delimiter between them",
+    "buildString": "3 die(3)",
+    "statusCode": 404,
+    "response": {
+      "errorMessage": "could not parse build string",
+      "errorType": "InvalidBuildStringError"
+    }
+  },
+  {
+    "description": "InvalidBuildStringError: a bare number where a die should be",
+    "buildString": "3 & die(3)",
+    "statusCode": 404,
+    "response": {
+      "errorMessage": "could not parse build string",
+      "errorType": "InvalidBuildStringError"
+    }
+  },
+  {
+    "description": "InvalidBuildStringError: a string where a number should be",
+    "buildString": "3 * die(\"a\")",
+    "statusCode": 404,
+    "response": {
+      "errorMessage": "could not parse build string",
+      "errorType": "InvalidBuildStringError"
+    }
+  },
+  {
+    "description": "LimitsError: the record is over the lambda's max_dice_value of 4000",
     "buildString": "100*Die(100)",
     "statusCode": 404,
     "response": {
       "errorMessage": "Record: DiceRecord({Die(100): 100}) has a sum of dictionaries greater than 4000",
-      "errorType": "ValueError"
-    }
-  },
-  {
-    "description": "SyntaxError: a number and a die with no delimiter between them",
-    "buildString": "3 die(3)",
-    "statusCode": 404,
-    "response": {
-      "errorMessage": "invalid syntax",
-      "errorType": "SyntaxError"
-    }
-  },
-  {
-    "description": "AttributeError: a bare number where a die should be",
-    "buildString": "3 & die(3)",
-    "statusCode": 404,
-    "response": {
-      "errorMessage": "'Constant' object has no attribute 'func'",
-      "errorType": "AttributeError"
+      "errorType": "LimitsError"
     }
   },
   {

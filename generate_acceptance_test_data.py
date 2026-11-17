@@ -77,16 +77,23 @@ BASIC_CASES = [
     AcceptanceCase("   ", "whitespace only makes an empty table"),
     # One build string for each error type the handler can return.
     AcceptanceCase(
-        "2*Die(5) & *Die(4)", "ValueError: the delimiter with no number before it"
+        "2*Die(5) & *Die(4)",
+        "InvalidBuildStringError: the delimiter with no number before it",
+    ),
+    AcceptanceCase(
+        "3 die(3)",
+        "InvalidBuildStringError: a number and a die with no delimiter between them",
+    ),
+    AcceptanceCase(
+        "3 & die(3)", "InvalidBuildStringError: a bare number where a die should be"
+    ),
+    AcceptanceCase(
+        '3 * die("a")', "InvalidBuildStringError: a string where a number should be"
     ),
     AcceptanceCase(
         "100*Die(100)",
-        "ValueError: the record is over the lambda's max_dice_value of 4000",
+        "LimitsError: the record is over the lambda's max_dice_value of 4000",
     ),
-    AcceptanceCase(
-        "3 die(3)", "SyntaxError: a number and a die with no delimiter between them"
-    ),
-    AcceptanceCase("3 & die(3)", "AttributeError: a bare number where a die should be"),
     AcceptanceCase("notadie(5)", "ParseError: a die class the parser does not know"),
     AcceptanceCase("die(1, 2, 3)", "ParseError: too many parameters for the die class"),
     AcceptanceCase("die(30000)", "LimitsError: a die size over the parser's limit"),
