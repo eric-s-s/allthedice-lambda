@@ -25,7 +25,7 @@ from dicetables import (
     DicePool,
 )
 
-from request_handler.dice_tables_tequest_handler import (
+from request_handler.dicetables_request_handler import (
     DiceTablesRequestHandler,
     make_dict,
     construct_dice_table,

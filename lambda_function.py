@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from logging import getLogger, INFO
 
-from request_handler.dice_tables_tequest_handler import DiceTablesRequestHandler
+from request_handler.dicetables_request_handler import DiceTablesRequestHandler
 
 HANDLER = DiceTablesRequestHandler(max_dice_value=4000)
 
